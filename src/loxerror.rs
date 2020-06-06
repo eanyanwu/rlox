@@ -1,3 +1,5 @@
+use std::io::{stdout, Write};
+
 static mut HAD_ERROR: bool = false;
 
 pub fn error(line: usize, message: &str) {
@@ -8,6 +10,8 @@ pub fn report(line: usize, location: &str, message: &str) {
     eprintln!("[line {}] Error {}: {}", line, location, message);
 
     set_error(true);
+
+    stdout().flush().unwrap();
 }
 
 pub fn get_error() -> bool {

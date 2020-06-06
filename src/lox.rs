@@ -3,14 +3,9 @@ use std::io::{Write, Error, stdin, stdout};
 use crate::loxerror;
 use crate::scanner::Scanner;
 
-pub struct Lox {
-}
+pub struct Lox;
 
 impl Lox {
-    pub fn new() -> Self {
-        Lox {}
-    }
-
     pub fn run_file(path: &str) -> Result<(), Error> {
         let c = fs::read_to_string(path)?;
     
@@ -44,7 +39,7 @@ impl Lox {
         let tokens = scanner.scan_tokens();
 
         for t in tokens {
-            println!("{:?}", t);
+            println!("{}", t.to_string());
             stdout().flush()?;
         }
 
