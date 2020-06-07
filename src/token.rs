@@ -1,3 +1,7 @@
+//! # Lox tokens
+//! 
+
+#[derive(Debug, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub lexeme: String,
@@ -19,7 +23,7 @@ impl Token {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
@@ -32,7 +36,7 @@ pub enum TokenType {
     LESS, LESS_EQUAL,
 
     // Literals.
-    IDENTIFIER, STRING, NUMBER,
+    IDENTIFIER, STRING(String), NUMBER(f64),
 
     // Keywords.
     AND, CLASS, ELSE, FALSE, FUN, FOR, IF, NIL, OR,

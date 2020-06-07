@@ -1,4 +1,27 @@
+//! # Lox error-handling
+//! 
+
 use std::io::{stdout, Write};
+use std::fmt;
+
+#[derive(Debug, Clone)]
+pub struct LoxError{
+    message: String,
+}
+
+impl LoxError {
+    pub fn new(msg: &str) -> Self {
+        Self {
+            message: String::from(msg),
+        }
+    }
+}
+
+impl fmt::Display for LoxError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
 
 static mut HAD_ERROR: bool = false;
 

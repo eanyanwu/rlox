@@ -1,5 +1,8 @@
-use std::collections::HashMap;
+//! # Lox Scanner
+//! 
 
+
+use std::collections::HashMap;
 use crate::loxerror;
 use crate::token::{Token, TokenType};
 
@@ -56,7 +59,7 @@ impl Scanner {
     }
 
     pub fn scan_tokens(mut self) -> Vec<Token> {
-        while self.peek() != None {
+        while self.current() != None {
             self.start = self.current;
             
             self.scan_token();
@@ -68,7 +71,7 @@ impl Scanner {
     }
 
     fn scan_token(&mut self) {
-        match self.emit() {
+        match self.current() {
             // Single-character lexemes
             Some('(') => self.add_token(TokenType::LEFT_PAREN),
             Some(')') => self.add_token(TokenType::RIGHT_PAREN),
@@ -83,29 +86,29 @@ impl Scanner {
 
             // Lexemes that could be both single or double characters
             Some('!') => {
-                let token = if self.try_match('=') { TokenType::BANG_EQUAL } else { TokenType::BANG };
+                let token = if self.try_advance('=') { TokenType::BANG_EQUAL } else { TokenType::BANG };
+
                 self.add_token(token);
             },
             Some('=') => {
-                let token = if self.try_match('=') { TokenType::EQUAL_EQUAL } else { TokenType::EQUAL };
+                let token = if self.try_advance('=') { TokenType::EQUAL_EQUAL } else { TokenType::EQUAL };
                 self.add_token(token);
             },
             Some('<') => {
-                let token = if self.try_match('=') { TokenType::LESS_EQUAL } else { TokenType::LESS };
+                let token = if self.try_advance('=') { TokenType::LESS_EQUAL } else { TokenType::LESS };
                 self.add_token(token);
             },
             Some('>') => {
-                let token = if self.try_match('=') { TokenType::GREATER_EQUAL} else { TokenType::GREATER };
+                let token = if self.try_advance('=') { TokenType::GREATER_EQUAL} else { TokenType::GREATER };
                 self.add_token(token);
             },
 
             // The slash operator is a bit special because comments also begin with a slash
             Some('/') => {
-                if self.try_match('/') {
+                if self.try_advance('/') {
                     // Ah, it's a comment line
-                    // emit and discard of the next characters until we hit a new line
-                    while self.peek() != Some('\n') {
-                        self.emit();
+                    while self.next(1) != Some('\n') {
+                        self.advance();
                     }
                 } else {
                     self.add_token(TokenType::SLASH);
@@ -127,31 +130,24 @@ impl Scanner {
             // identifiers
             Some(i) if Scanner::is_alphabetic(Some(i)) => self.handle_identifier(),
 
-            Some(_) => loxerror::error(self.line, "Unexpected character"),
+            Some(u) => loxerror::error(self.line, &format!("Unexpected character: {}", u)),
 
             // the method calling `scan_token` checks before hand that we are not at the end
             None => unreachable!(), 
+        };
+
+        self.advance();
+    }
+
+    fn advance(&mut self) {
+        if self.current().is_some() {
+            self.current += 1;
         }
     }
 
-    fn emit(&mut self) -> Option<char> {
-        self.current += 1;
-        
-        self.chars.get(self.current - 1).cloned()
-    }
-
-    fn peek(&self) -> Option<char> {
-        self.chars.get(self.current).cloned()
-    }
-
-    fn peek_next(&self) -> Option<char> {
-        self.chars.get(self.current + 1).cloned()
-    }
-
-    fn try_match(&mut self, expected: char) -> bool {
-        if self.peek().map_or(false, |e| e == expected) {
-            // discard the next character since we know what it is
-            self.emit();
+    fn try_advance(&mut self, expected: char) -> bool {
+        if self.next(1).map_or(false, |e| e == expected) {
+            self.advance();
 
             true
         } else {
@@ -159,52 +155,67 @@ impl Scanner {
         }
     }
 
+    fn current(&self) -> Option<char> {
+        self.chars.get(self.current).cloned()
+    }
+
+    fn next(&self, i: usize) -> Option<char> {
+        self.chars.get(self.current + i).cloned()
+    }
+
     fn add_token(&mut self, token_type: TokenType) {
-        let lexeme = self.chars[self.start..self.current].iter().collect();
+        let lexeme = self.chars[self.start..=self.current].iter().collect();
 
         self.tokens.push(Token::new(token_type, lexeme, self.line));
     }
 
     fn handle_string(&mut self) {
         // Find the end of the string
-        while self.peek() != Some('"') && self.peek() != None {
+        while self.next(1) != Some('"') && self.next(1) != None {
             // If we encounter a newline in the middle of the string, just increment the line counter
             // and keep looking for the end of the string
-            if self.peek() == Some('\n') { self.line += 1; }
+            if self.next(1) == Some('\n') { self.line += 1; }
 
-            self.emit();
+            self.advance();
         }
 
-        if self.peek() == None {
+        if self.next(1) == None {
             loxerror::error(self.line, "Unterminated string");
             return;
         }
 
-        // eat up the closing quote
-        self.emit();
+        self.advance();
 
-        self.add_token(TokenType::STRING);
+        let val = self.chars[self.start + 1..=self.current - 1].iter().collect();
+
+        self.add_token(TokenType::STRING(val));
     }
 
     fn handle_number(&mut self) {
         // Read digits until you can read no more
-        while Scanner::is_digit(self.peek()) { self.emit(); }
+        while Scanner::is_digit(self.next(1)) { self.advance(); }
 
-        if self.peek() == Some('.') && Scanner::is_digit(self.peek_next()) {
-            self.emit();
+        if self.next(1) == Some('.') && Scanner::is_digit(self.next(2)) {
+            self.advance();
 
-            while Scanner::is_digit(self.peek()) { self.emit(); }
+            while Scanner::is_digit(self.next(1)) { self.advance(); }
         }
 
-        self.add_token(TokenType::NUMBER);
+        let val: f64 = self.chars[self.start..=self.current]
+                            .iter()
+                            .collect::<String>()
+                            .parse()
+                            .unwrap();
+
+        self.add_token(TokenType::NUMBER(val));
     }
 
     fn handle_identifier(&mut self) {
-        while Scanner::is_alphanumeric(self.peek()) { self.emit(); }
+        while Scanner::is_alphanumeric(self.next(1)) { self.advance(); }
 
-        let lexeme = self.chars[self.start..self.current].iter().collect::<String>();
+        let lexeme = self.chars[self.start..=self.current].iter().collect::<String>();
 
-        let token_type = self.key_words.get(&lexeme).map_or(TokenType::IDENTIFIER, |&e| e);
+        let token_type = self.key_words.get(&lexeme).map_or(TokenType::IDENTIFIER, |e| e.clone());
 
         self.add_token(token_type);
     }
