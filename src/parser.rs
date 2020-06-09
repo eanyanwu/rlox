@@ -3,7 +3,7 @@
 
 use crate::loxerror;
 use crate::token::{Token, TokenType::*};
-use crate::expr::{Expr, UnaryExpr, LiteralExpr, BinaryExpr};
+use crate::expr::{Expr, UnaryExpr, LiteralExpr, BinaryExpr, GroupingExpr};
 
 
 pub struct ParserError {
@@ -166,7 +166,7 @@ impl Parser {
                 let expr = self.expression()?;
 
                 match self.current() {
-                    Some(Token { token_type: RIGHT_PAREN, ..}) => { self.advance(); Ok(expr)} ,
+                    Some(Token { token_type: RIGHT_PAREN, ..}) => { self.advance(); Ok(Expr::Grouping(GroupingExpr::new(expr)))} ,
                     unexpected @ _ => Err(ParserError::new(unexpected)),
                 }
             },
