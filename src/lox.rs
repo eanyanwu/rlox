@@ -3,6 +3,7 @@ use std::io::{Write, stdin, stdout};
 use crate::loxerror::{set_error, get_error, LoxError};
 use crate::scanner::Scanner;
 use crate::parser::Parser;
+use crate::interpreter::Interpreter;
 
 pub struct Lox;
 
@@ -55,7 +56,11 @@ impl Lox {
 
         let expression = parser.parse()?;
 
-        println!("{}", expression);
+        let interpreter = Interpreter::new();
+
+        let value = interpreter.interpret(expression)?;
+
+        println!("{}", value);
 
         Ok(())
     }
